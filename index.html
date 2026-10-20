@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ASTRAL WATERS: 星影の湖と旅人の釣り竿 | HD-2D Fantasy Fishing RPG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Shippori+Mincho:wght@500;700;800&family=DotGothic16&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app-container">
+    <!-- Main HD-2D Viewport Canvas -->
+    <canvas id="game-canvas" width="1280" height="720"></canvas>
+
+    <!-- Atmospheric Letterbox & HD-2D Frame Overlay -->
+    <div id="hd2d-vignette-overlay"></div>
+
+    <!-- Top HUD Bar: Location, Weather/Time, Currency, Current Quest -->
+    <header id="top-hud" class="hud-hidden">
+      <div class="hud-left">
+        <div class="location-plaque">
+          <div class="plaque-ornament left"></div>
+          <div class="location-info">
+            <span class="location-sub">ASTRAL SANCTUARY</span>
+            <h1 id="hud-zone-name">星影の湖 エロウエン — 桟橋の灯影</h1>
+          </div>
+          <div class="plaque-ornament right"></div>
+        </div>
+
+        <div class="weather-badge" id="weather-cycle-btn" title="クリックまたは [T] キーで時間・天候を移ろわせる（星見の鐘）">
+          <span class="weather-icon" id="hud-weather-icon">🌇</span>
+          <div class="weather-text">
+            <span class="weather-label" id="hud-weather-name">黄昏 (夕凪)</span>
+            <span class="weather-sub" id="hud-weather-bonus">琥珀系・夕マヅメ活性 UP</span>
+          </div>
+          <span class="key-hint">T</span>
+        </div>
+      </div>
+
+      <div class="hud-center">
+        <div class="chapter-banner" id="hud-chapter-banner">
+          <span class="chapter-tag" id="hud-chapter-num">第I章</span>
+          <span class="chapter-goal" id="hud-chapter-goal">湖に竿を振り、最初の魚を2匹釣り上げよう (0/2)</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="currency-box" title="星鱗貨 (釣具の強化に使用)">
+          <span class="coin-icon">🪙</span>
+          <span id="hud-gold">120</span>
+          <span class="unit">G</span>
+        </div>
+        <div class="currency-box astral" title="星結晶 (希少な魚や記録更新で獲得)">
+          <span class="coin-icon">✦</span>
+          <span id="hud-shards">2</span>
+          <span class="unit">星片</span>
+        </div>
+        <div class="nav-buttons">
+          <button class="ornate-btn small" id="btn-open-dex" title="魚図鑑・博物誌 [J]">
+            <span class="btn-icon">📖</span> 図鑑 <span id="hud-dex-count" class="badge-pill">0/12</span>
+            <kbd>J</kbd>
+          </button>
+          <button class="ornate-btn small" id="btn-open-shop" title="星影の釣具工房 [U]">
+            <span class="btn-icon">⚒️</span> 工房 <span id="hud-shop-alert" class="alert-dot hidden">!</span>
+            <kbd>U</kbd>
+          </button>
+          <button class="ornate-btn small icon-only" id="btn-toggle-audio" title="サウンド切替 [M]">
+            <span id="hud-audio-icon">🔊</span>
+          </button>
+          <button class="ornate-btn small icon-only" id="btn-open-help" title="操作ガイド [H]">
+            <span>?</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Fishing Spot / Zone Quick Selector (Shown in Idle / Aiming State) -->
+    <div id="zone-selector-bar" class="hud-hidden">
+      <div class="zone-bar-title">釣り場スポット選択 <small>[1〜5 / 左右キー]</small></div>
+      <div class="zone-tabs" id="zone-tabs-container">
+        <button class="zone-tab active" data-zone="0">
+          <span class="z-num">1</span>
+          <span class="z-name">浅瀬の葦原</span>
+          <span class="z-depth">水深 1.5m | 小・中型</span>
+        </button>
+        <button class="zone-tab" data-zone="1">
+          <span class="z-num">2</span>
+          <span class="z-name">桟橋の灯影</span>
+          <span class="z-depth">水深 3.0m | 中型・夜行</span>
+        </button>
+        <button class="zone-tab" data-zone="2">
+          <span class="z-num">3</span>
+          <span class="z-name">翠滝の淵</span>
+          <span class="z-depth">水深 4.8m | 渓流・大型</span>
+        </button>
+        <button class="zone-tab" data-zone="3">
+          <span class="z-num">4</span>
+          <span class="z-name">水没遺跡の回廊</span>
+          <span class="z-depth">水深 7.2m | 古代・希少</span>
+        </button>
+        <button class="zone-tab" data-zone="4">
+          <span class="z-num">5</span>
+          <span class="z-name">星詠みの深淵</span>
+          <span class="z-depth">水深 12.0m | 神秘・湖主</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Left Equipment Status Bar -->
+    <div id="equip-status-bar" class="hud-hidden">
+      <div class="equip-chip" id="hud-equip-rod">
+        <span class="eq-icon">🎣</span>
+        <div class="eq-detail">
+          <span class="eq-type">ROD</span>
+          <span class="eq-name" id="hud-rod-name">旅人の木竿</span>
+        </div>
+      </div>
+      <div class="equip-chip" id="hud-equip-reel">
+        <span class="eq-icon">⚙️</span>
+        <div class="eq-detail">
+          <span class="eq-type">REEL</span>
+          <span class="eq-name" id="hud-reel-name">麻紡ぎの糸車</span>
+        </div>
+      </div>
+      <div class="equip-chip" id="hud-equip-lure">
+        <span class="eq-icon">🎐</span>
+        <div class="eq-detail">
+          <span class="eq-type">LURE</span>
+          <span class="eq-name" id="hud-lure-name">蛍石の小浮き</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contextual Action Prompt (Bottom Center) -->
+    <div id="action-prompt-box" class="hud-hidden">
+      <div class="prompt-inner">
+        <span class="prompt-key" id="prompt-key-badge">SPACE / CLICK</span>
+        <span class="prompt-label" id="prompt-text-label">長押しでキャスト力を溜め、離して投擲</span>
+      </div>
+    </div>
+
+    <!-- Casting Power Gauge Overlay -->
+    <div id="cast-gauge-overlay" class="hidden">
+      <div class="cast-gauge-header">CAST POWER</div>
+      <div class="cast-bar-frame">
+        <div class="cast-sweet-spot"></div>
+        <div class="cast-bar-fill" id="cast-bar-fill"></div>
+        <div class="cast-marker" id="cast-bar-marker"></div>
+      </div>
+      <div class="cast-hint">黄金の領域で離すと <strong>PERFECT CAST!</strong>（希少魚率・初期有利UP）</div>
+    </div>
+
+    <!-- Lure / Waiting Phase Overlay -->
+    <div id="waiting-overlay" class="hidden">
+      <div class="waiting-card">
+        <div class="ripple-indicator"></div>
+        <div class="waiting-texts">
+          <div class="waiting-title" id="waiting-status-text">水面を見つめている…</div>
+          <div class="waiting-sub">[A / D] または [クリック] で浮きを揺らして魚を誘う | [ESC / R] 仕掛けを回収</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OCTOPATH-INSPIRED FISHING DUEL HUD (Minigame Phase) -->
+    <div id="battle-hud" class="hidden">
+      <!-- Top Fish Boss/Target Status Bar -->
+      <div class="fish-battle-header">
+        <div class="fish-portrait-frame">
+          <canvas id="battle-fish-icon" width="64" height="64"></canvas>
+          <div class="shield-badge" id="battle-shield-badge" title="シールドポイント（魚の引き方向に合わせてA/W/Dでカウンターすると破壊！）">
+            <span class="shield-icon">🛡️</span>
+            <span class="shield-num" id="battle-shield-count">3</span>
+          </div>
+        </div>
+
+        <div class="fish-bars-container">
+          <div class="fish-title-row">
+            <div class="fish-name-group">
+              <span class="fish-archetype-tag" id="battle-fish-type">疾走型</span>
+              <h2 id="battle-fish-name">月影コイ</h2>
+            </div>
+            <div class="fish-dist-badge">
+              残り距離: <strong id="battle-distance-val">18.5</strong>m
+            </div>
+          </div>
+
+          <!-- Fish Stamina / HP Bar -->
+          <div class="stamina-bar-outer">
+            <div class="stamina-bar-damage" id="battle-stamina-trail"></div>
+            <div class="stamina-bar-fill" id="battle-stamina-fill"></div>
+            <span class="stamina-label">FISH STAMINA</span>
+          </div>
+
+          <!-- Fish Action / Stance Telegraph Banner -->
+          <div class="fish-stance-row">
+            <div class="stance-indicator" id="battle-stance-box">
+              <span class="stance-arrow" id="battle-stance-arrow">◀</span>
+              <span class="stance-text" id="battle-stance-text">左へ疾走中！ [A / ◀] でロッドを合わせてシールド削り！</span>
+            </div>
+            <div class="break-banner hidden" id="battle-break-banner">
+              💥 SHIELD BREAK!! 魚が気絶中 — 全力で巻き上げろ！！ (ダメージ2.5倍)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Directional Counter & Boost Controls -->
+      <div class="battle-lower-controls">
+        <!-- Boost Points (BP) Panel -->
+        <div class="bp-panel">
+          <div class="bp-header">
+            <span class="bp-title">BOOST (星凪)</span>
+            <div class="bp-diamonds" id="battle-bp-diamonds">
+              <span class="bp-gem active">◆</span>
+              <span class="bp-gem">◆</span>
+              <span class="bp-gem">◆</span>
+            </div>
+          </div>
+          <button class="boost-trigger-btn" id="btn-battle-boost" title="[E] または [Shift] でブースト発動！糸負荷回復＋シールド破壊＋高速巻き上げ">
+            <span class="boost-spark">✨</span> 星凪ブースト発動 <kbd>E / Shift</kbd>
+          </button>
+        </div>
+
+        <!-- Line Tension & Resonance Gauge -->
+        <div class="tension-panel">
+          <div class="tension-labels">
+            <span>SLACK (緩み)</span>
+            <span id="tension-state-label" class="optimal">OPTIMAL TENSION (黄金域でダメージ増加)</span>
+            <span>DANGER (糸切れ危険!)</span>
+          </div>
+          <div class="tension-bar-track">
+            <div class="tension-sweet-zone" id="tension-sweet-zone"></div>
+            <div class="tension-danger-zone"></div>
+            <div class="tension-fill" id="battle-tension-fill"></div>
+            <div class="tension-needle" id="battle-tension-needle"></div>
+          </div>
+
+          <!-- Touch / Mouse / Keyboard Counter Buttons -->
+          <div class="counter-buttons-row">
+            <button class="counter-btn" id="btn-counter-left" data-dir="-1">
+              <span class="c-arrow">◀</span> 左いなす <kbd>A / ←</kbd>
+            </button>
+            <button class="counter-btn up" id="btn-counter-up" data-dir="0">
+              <span class="c-arrow">▲</span> 跳躍合わせ <kbd>W / ↑</kbd>
+            </button>
+            <button class="counter-btn" id="btn-counter-right" data-dir="1">
+              <span class="c-arrow">▶</span> 右いなす <kbd>D / →</kbd>
+            </button>
+            <button class="reel-hold-btn" id="btn-reel-hold">
+              🎣 リールを巻く (長押し) <kbd>SPACE / 左クリック</kbd>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Catch Showcase Modal (Displayed on catching a fish) -->
+    <div id="catch-modal" class="modal-backdrop hidden">
+      <div class="parchment-card catch-card">
+        <div class="card-filigree top"></div>
+        <div class="catch-header-ribbon">
+          <span class="new-badge hidden" id="catch-new-badge">✨ NEW DISCOVERY!</span>
+          <span class="crown-badge hidden" id="catch-crown-badge">👑 GOLD CROWN SIZE!</span>
+          <div class="catch-subtitle">ASTRAL SPECIMEN CAPTURED</div>
+          <h2 id="catch-fish-name">月影コイ</h2>
+          <div class="catch-stars" id="catch-fish-stars">★★☆☆☆</div>
+        </div>
+
+        <div class="catch-body">
+          <div class="catch-sprite-stage">
+            <div class="stage-glow-ring"></div>
+            <canvas id="catch-fish-canvas" width="192" height="144"></canvas>
+          </div>
+
+          <div class="catch-stats-panel">
+            <div class="stat-grid">
+              <div class="stat-item">
+                <span class="s-label">体長 (SIZE)</span>
+                <span class="s-val" id="catch-size-val">48.2 cm</span>
+              </div>
+              <div class="stat-item">
+                <span class="s-label">重量 (WEIGHT)</span>
+                <span class="s-val" id="catch-weight-val">2.45 kg</span>
+              </div>
+              <div class="stat-item">
+                <span class="s-label">評価 (RANK)</span>
+                <span class="s-val gold" id="catch-rank-val">S (大物)</span>
+              </div>
+              <div class="stat-item">
+                <span class="s-label">報酬 (REWARD)</span>
+                <span class="s-val" id="catch-reward-val">+85 G / +1 ✦</span>
+              </div>
+            </div>
+            <p class="catch-lore" id="catch-fish-lore">
+              水面に映る月光を好んで集まる幻想的な錦鯉。その白い鱗は夜霧の中でも淡い銀光を放つという。
+            </p>
+          </div>
+        </div>
+
+        <div class="catch-footer">
+          <button class="ornate-btn primary large" id="btn-catch-continue">
+            <span>次へ進む</span> <kbd>SPACE / ENTER</kbd>
+          </button>
+        </div>
+        <div class="card-filigree bottom"></div>
+      </div>
+    </div>
+
+    <!-- Encyclopedia (博物誌・魚図鑑) Modal -->
+    <div id="dex-modal" class="modal-backdrop hidden">
+      <div class="parchment-card wide-card">
+        <div class="modal-header">
+          <div>
+            <span class="modal-sub">ENCYCLOPEDIA OF LAKE ELOWEN</span>
+            <h2>📖 エロウエン湖 魚類博物誌</h2>
+          </div>
+          <div class="dex-summary">
+            収集率: <strong id="dex-completion-rate">0%</strong> (<span id="dex-caught-species">0</span>/12種) | 総釣果: <strong id="dex-total-catches">0</strong>匹
+          </div>
+          <button class="close-btn" id="btn-close-dex">✕</button>
+        </div>
+
+        <div class="dex-layout">
+          <div class="dex-grid" id="dex-list-grid"></div>
+          <div class="dex-detail-pane" id="dex-detail-pane">
+            <div class="dex-detail-sprite-wrap">
+              <canvas id="dex-detail-canvas" width="160" height="120"></canvas>
+            </div>
+            <div class="dex-detail-Meta">
+              <span class="dex-detail-num" id="dex-d-num">No.01</span>
+              <h3 id="dex-d-name">？？？</h3>
+              <div class="dex-d-stars" id="dex-d-stars">★☆☆☆☆</div>
+              <div class="dex-tags-row">
+                <span class="meta-pill" id="dex-d-zone">生息：浅瀬の葦原</span>
+                <span class="meta-pill" id="dex-d-weather">出現：常時</span>
+                <span class="meta-pill" id="dex-d-type">性質：疾走型</span>
+              </div>
+              <div class="dex-record-box">
+                <span>釣果数: <strong id="dex-d-count">0</strong>匹</span>
+                <span>最大記録: <strong id="dex-d-max">— cm</strong></span>
+              </div>
+              <p class="dex-d-desc" id="dex-d-desc">まだ釣り上げていない未知の魚。生息域と時間帯・天候を合わせて狙ってみよう。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tackle Workshop (星影の釣具工房) Modal -->
+    <div id="shop-modal" class="modal-backdrop hidden">
+      <div class="parchment-card wide-card">
+        <div class="modal-header">
+          <div>
+            <span class="modal-sub">ORBUS'S ASTRAL TACKLE WORKSHOP</span>
+            <h2>⚒️ 星影の釣具工房 — オルバス翁の鍛冶台</h2>
+          </div>
+          <div class="shop-wallet">
+            <span>所持金: <strong id="shop-gold-val">120</strong> G</span>
+            <span>星結晶: <strong id="shop-shards-val">2</strong> ✦</span>
+          </div>
+          <button class="close-btn" id="btn-close-shop">✕</button>
+        </div>
+
+        <div class="workshop-npc-bar">
+          <canvas id="npc-orbus-canvas" width="64" height="64"></canvas>
+          <div class="npc-speech">
+            <strong>オルバス翁：</strong>
+            <span id="orbus-dialogue-text">「ほっほ、良い目をしておるな旅人よ。エロウエン湖の深淵に潜む『湖主』を釣り上げたければ、星辰の力を宿す釣具へと鍛え上げるがよい。」</span>
+          </div>
+        </div>
+
+        <div class="shop-columns" id="shop-items-container"></div>
+      </div>
+    </div>
+
+    <!-- Help / Controls Guide Modal -->
+    <div id="help-modal" class="modal-backdrop hidden">
+      <div class="parchment-card">
+        <div class="modal-header">
+          <div>
+            <span class="modal-sub">ANGLER'S HANDBOOK</span>
+            <h2>📜 旅人の手引き・操作方法</h2>
+          </div>
+          <button class="close-btn" id="btn-close-help">✕</button>
+        </div>
+        <div class="help-content">
+          <div class="help-section">
+            <h3>1. 釣り場選びとキャスト（投擲）</h3>
+            <p>画面下の <strong>[1〜5] スポット選択</strong> で浅瀬から深淵まで5つの釣り場を切り替えられます。<br>
+            <strong>[SPACE]</strong> または <strong>画面クリック長押し</strong> でパワーを溜め、黄金の枠で離すと <strong>PERFECT CAST!</strong> となり、希少な魚が寄りやすくなります。</p>
+          </div>
+          <div class="help-section">
+            <h3>2. 誘いとヒット</h3>
+            <p>浮きが着水したら <strong>[A / D]</strong> または <strong>クリック</strong> で波紋を起こして魚を誘えます。浮きが強く沈み <strong>「HIT!!」</strong> と表示されたら即座に合わせましょう（自動フッキング補助あり）。</p>
+          </div>
+          <div class="help-section">
+            <h3>3. シールドブレイク＆ブースト釣りバトル</h3>
+            <ul>
+              <li><strong>リール巻き上げ [SPACE / 左クリック長押し]：</strong> 糸のテンション（張力）に注意しながら魚のスタミナを削ります。黄金の適正域（OPTIMAL）に保つと高効率です。</li>
+              <li><strong>カウンター＆ブレイク [A(左) / W(跳躍) / D(右)]：</strong> 魚が逃げる方向やジャンプ予告に合わせてロッドを操作すると <strong>🛡️シールド</strong> を削れます。0にすると <strong>💥BREAK!!</strong> が発生し、魚が気絶して一気に巻き上げられます！</li>
+              <li><strong>星凪ブースト [E / Shift / ボタン]：</strong> 溜まったBP（◆）を消費し、糸の負荷を瞬時に冷却しつつシールドを破壊＆超高速巻き上げを行います。</li>
+            </ul>
+          </div>
+          <div class="help-section">
+            <h3>4. 時間・天候の移ろいと「湖主」</h3>
+            <p>左上の <strong>天候バッジ [Tキー]</strong>（星見の鐘）を鳴らすことで、<strong>黄昏・宵闇・霧雨・星降り</strong> の4つの景色と出現魚を自在に切り替えられます。工房で釣具を鍛え、<strong>「星降り」</strong>の夜に深淵へ挑みましょう。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ending / Chapter Complete Celebration Modal -->
+    <div id="ending-modal" class="modal-backdrop hidden">
+      <div class="parchment-card ending-card">
+        <div class="card-filigree top"></div>
+        <div class="ending-header">
+          <span class="ending-sub">CHRONICLE COMPLETED</span>
+          <h2>🌟 星影の湖の伝説 — 完遂 🌟</h2>
+          <p class="ending-lead">
+            あなたは星降るエロウエン湖の深淵より、いにしえの湖主<strong>『星喰らいのレヴィアタン』</strong>を見事釣り上げ、星詠みの釣り人としての伝説を刻みました！
+          </p>
+        </div>
+
+        <div class="ending-stats-box">
+          <div class="e-stat">
+            <span>プレイ時間</span>
+            <strong id="end-playtime">08:42</strong>
+          </div>
+          <div class="e-stat">
+            <span>図鑑収集率</span>
+            <strong id="end-dex-rate">83% (10/12)</strong>
+          </div>
+          <div class="e-stat">
+            <span>総釣果数</span>
+            <strong id="end-total-fish">14匹</strong>
+          </div>
+          <div class="e-stat">
+            <span>称号</span>
+            <strong class="gold" id="end-title-rank">星辰を統べる大釣師</strong>
+          </div>
+        </div>
+
+        <p class="ending-epilogue">
+          これより先は<strong>フリープレイモード</strong>として、全12種の魚図鑑コンプリートや最大サイズ（👑金冠）の更新、四季折々の移ろう景色を心ゆくまでお楽しみいただけます。
+        </p>
+
+        <div class="ending-footer">
+          <button class="ornate-btn primary large" id="btn-ending-continue">
+            <span>湖畔へ戻り旅を続ける（図鑑コンプリートへ）</span>
+          </button>
+        </div>
+        <div class="card-filigree bottom"></div>
+      </div>
+    </div>
+
+    <!-- Title Screen Overlay -->
+    <div id="title-screen">
+      <div class="title-content">
+        <div class="title-emblem">✦ HD-2D FANTASY FISHING CHRONICLE ✦</div>
+        <h1 class="main-title">ASTRAL WATERS</h1>
+        <p class="sub-title">— 星影の湖エロウエンと旅人の釣り竿 —</p>
+        <div class="title-divider"></div>
+        <p class="title-desc">
+          黄昏の光芒、月夜の蛍火、霧雨の波紋、そして星降る夜の深淵。<br>
+          移ろう幻想の湖で12種の神秘の魚と「湖主」を追う、珠玉のフィッシングRPG。
+        </p>
+        <div class="title-actions">
+          <button class="ornate-btn primary xl" id="btn-start-game">
+            <span>✨ 旅を始める (START GAME)</span>
+          </button>
+          <button class="ornate-btn secondary" id="btn-continue-game" style="display:none;">
+            <span>📖 続きから (CONTINUE)</span>
+          </button>
+        </div>
+        <div class="title-footer-notes">
+          <span>操作: マウス / キーボード両対応 (SPACE, WASD, T, J, U)</span>
+          <span>プレイ目安: 10〜15分 (全4章＋図鑑収集)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Toast Notifications -->
+    <div id="toast-container"></div>
+  </div>
+
+  <!-- Game Modules -->
+  <script src="js/data.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

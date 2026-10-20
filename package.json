@@ -1,0 +1,9 @@
+{
+  "name": "astral-waters-hd2d-fishing",
+  "version": "1.0.0",
+  "description": "HD-2D Fantasy Fishing RPG inspired by Octopath Traveler — Astral Waters: 星影の湖と旅人の釣り竿",
+  "scripts": {
+    "start": "npx serve -l 8080 ."
+  },
+  "license": "MIT"
+}
